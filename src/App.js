@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import LabelRegion from "./labelRegion/index";
-import dog0 from "./images/dog0.jpg";
-import dog1 from "./images/dog1.jpg";
+// import dog0 from "./images/dog0.jpg";
+// import dog1 from "./images/dog1.jpg";
 import dog2 from "./images/dog2.jpg";
 import dog3 from "./images/dog3.jpg";
 import dog4 from "./images/dog4.jpg";
@@ -16,7 +16,7 @@ class App extends Component {
       activeImageIndex: 0,
       activeLabel: null,
       labelList: [{labelName: "dog", id:"1"}, {labelName: "cat", id: "2"}],
-      imageList: [dog0, dog1, dog2, dog3, dog4, dog5],
+      imageList: [dog2, dog3, dog4, dog5],
       enlargeCount: 1,
       status: 1,
     }
