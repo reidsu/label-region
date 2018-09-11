@@ -1,0 +1,17 @@
+.drag-container {
+  display: inline-block;
+  position: relative;
+  width: 520px;
+  overflow: hidden;
+  height: 315px;
+  
+}
+.drag-container-image {
+    display: block;
+    position: absolute;
+    user-select: none;
+    width: 700px;
+    height: 438.2px;
+    top: 10.9px;
+    left: 0px;
+}
