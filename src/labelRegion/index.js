@@ -17,6 +17,8 @@ class DragRegion extends Component {
     this.state = {
       regionList: [],
       activeRegion: null,
+      initialStyle: null,
+      mobileStatusStyle: null,
       enlargeCount: 1,  // 0 - 4
     }
   }
@@ -29,9 +31,11 @@ class DragRegion extends Component {
   componentWillReceiveProps(nextProps) {
     let list = [];
     let activeRegion = this.state.activeRegion;
-    if (!nextProps.labelList && nextProps.enlargeCount === this.props.enlargeCount && nextProps.status === this.props.status) {
-      return;
-    }
+    let status = nextProps.status;
+    // if (!nextProps.activeLabel && !nextProps.labelList && nextProps.enlargeCount === this.props.enlargeCount && nextProps.status === this.props.status) {
+    //   return;
+    // }
+    // 获取已经绘画的矩形
     if (this.state.regionList.length === 0) {
       list = list.concat(this._parsePositionToStyle(nextProps.labelList || []));
     } else if (this.props.activeImage !== nextProps.activeImage) {
@@ -40,38 +44,63 @@ class DragRegion extends Component {
     } else {
       list = list.concat(this._parsePositionToStyle(this.state.regionList || []));
     }
-    if (this.state.activeRegion !== null && nextProps.label) {
+    if (this.state.activeRegion !== null && nextProps.activeLabel) {
       if (this.props.activeImage === nextProps.activeImage) {
-        list[this.state.activeRegion].label = nextProps.label;
+        list[this.state.activeRegion].label = nextProps.activeLabel;
       }
     }
     let enlargeCount = nextProps.enlargeCount || this.state.enlargeCount;
     if (enlargeCount > 4) {
       enlargeCount = 4;
     } else if (enlargeCount < 1) {
-      enlargeCount = 1
+      enlargeCount = 1;
     }
-    if (nextProps.status !== this.props.status) {
-      if (nextProps.status == 1) {
-        // 标注状态
-        this.clearStatusMobileEvent();
-        this.registerStatusLabelEvent();
-
-      } else if (nextProps.status == 2) {
-        // 移动状态
-        this.clearStatusLabelEvent();
-        this.registerStatusMobileEvent();
+    // 放大 缩小
+    if (nextProps.enlargeCount !== this.state.enlargeCount) {
+      if (enlargeCount === 1) {
+        // 清理移动状态的style;
+        this.setState({
+          mobileStatusStyle: this._transformStyleMultiple(this.state.initialStyle, enlargeCount),
+        })
+      } else {
+        let mobileStatusStyle = this.state.mobileStatusStyle || this.state.initialStyle;
+        // console.log(mobileStatusStyle);
+        mobileStatusStyle = this._transformStyleMultiple(mobileStatusStyle, enlargeCount);
+        // console.log(mobileStatusStyle);
+        this.setState({
+          mobileStatusStyle
+        });
       }
     }
+    // console.log("切换", enlargeCount );
+    if (nextProps.status !== this.props.status) {
+      // 切换状态
+      // console.log("切换状态");
+      activeRegion = null;
+      if (nextProps.status == 1) {
+        // 标注状态
+        if (nextProps.enlargeCount === 1) {
+          // 清理container移动状态的style
+          this.setState({
+            mobileStatusStyle: this._transformStyleMultiple(this.state.initialStyle, enlargeCount),
+          })
+        }
+        this.clearStatusEditEvent();
+        this.registerStatusLabelEvent();
+      } else if (nextProps.status == 2) {
+      
+        // 移动状态
+        this.clearStatusLabelEvent();
+        this.registerStatusEditEvent();
+      }
+    }
+    
     this.setState({
-      regionList: list,
+      status: nextProps.status,
+      regionList: list,   
       activeRegion,
       enlargeCount,
-    });
-    // setTimeout(() => {
-    //   this.containerOffset = this.refs.container.getBoundingClientRect();
-    // })
-    
+    }); 
   }
   
   componentDidMount() {
@@ -82,12 +111,14 @@ class DragRegion extends Component {
     style.top = 0;
     style.left = 0;
     style.position = "absolute";
+    style.enlargeCount = 1;
     const enlargeCount = this.props.enlargeCount || 1;
     const initialStyle = style;
     this.setState({
       regionList: list,
       initialStyle: initialStyle,
       enlargeCount,
+      status: this.props.status,
     });
     this.registerStatusLabelEvent();
   }
@@ -99,20 +130,34 @@ class DragRegion extends Component {
     this._clearNoQualifieRegion();
     this.refs.container.removeEventListener("mousemove", this.func);
   }
+  closeDrag2 = (e) => {
+    if (e) {
+      e.stopImmediatePropagation();
+    }
+    this.initialStyle = null;
+    this.currentMobileStyle = this.state.mobileStyle;
+    this._clearNoQualifieRegion();
+    this.refs.container.removeEventListener("mousemove", this.func);
+  }
   registerStatusLabelEvent = () => {
     this.refs.container.addEventListener("mousedown", this.readyDraw);
     this.refs.container.addEventListener("mouseleave", this.closeDrag);
     this.refs.container.addEventListener("mouseup", this.closeDrag);
   }
-  registerStatusMobileEvent = () => {
+  registerStatusEditEvent = () => {
     this.refs.container.addEventListener("mousedown", this.dragImage);
-    this.refs.container.addEventListener("mouseleave", this.closeDrag);
-    this.refs.container.addEventListener("mouseup", this.closeDrag);
+    this.refs.container.addEventListener("mouseleave", this.closeDrag2);
+    this.refs.container.addEventListener("mouseup", this.closeDrag2);
   }
   clearStatusLabelEvent = (e) => {
-    this.refs.container.removeEventListener("mousemove", this.closeDrag);
+    this.refs.container.removeEventListener("mouseleave", this.closeDrag);
     this.refs.container.removeEventListener("mousedown", this.readyDraw);
     this.refs.container.removeEventListener("mouseup", this.closeDrag);
+  }
+  clearStatusEditEvent = () => { 
+    this.refs.container.removeEventListener("mousemove", this.closeDrag2);
+    this.refs.container.removeEventListener("mousedown", this.dragImage);
+    this.refs.container.removeEventListener("mouseup", this.closeDrag2);
   }
   dragImage = (e) => {
     if (this.state.enlargeCount === 1) {
@@ -126,15 +171,21 @@ class DragRegion extends Component {
       x: e.clientX,
       y: e.clientY,
     }
+    this.initialStyle = this.state.mobileStatusStyle;
     this.func = this.mobileImage;
     this.refs.container.addEventListener("mousemove", this.func);
-    // console.log(this.containerOffset);
-    // console.log(this.currentMousePoint);
   }
   mobileImage = (e) => {
-    console.log(e);
+    const offsetWidth = e.clientX - this.currentMousePoint.x;
+    const offsetHeight = e.clientY - this.currentMousePoint.y;
+    let initialStyle = JSON.parse(JSON.stringify(this.state.mobileStatusStyle));
+    initialStyle.top = this.initialStyle.top + offsetHeight;
+    initialStyle.left = this.initialStyle.left + offsetWidth;
+    this.setState({
+      mobileStatusStyle: initialStyle
+    })
   }
-  clearStatusMobileEvent = () => {}
+
   readyDraw = (e) => {
     e.stopImmediatePropagation();
     // 禁止拖动
@@ -144,6 +195,10 @@ class DragRegion extends Component {
     this.currentMousePoint = {
       x: e.clientX - this.containerOffset.left,
       y: e.clientY - this.containerOffset.top
+    }
+    this.currentAbsoluteMousePoint = {
+      x: e.clientX,
+      y: e.clientY
     }
     // 判断鼠标落点是已经存在的矩形上 还是画布上 或是矩形的边缘
     if (e.target.classList.contains("container-box")) {
@@ -195,47 +250,59 @@ class DragRegion extends Component {
     const region = list[activeRegionIndex];
     const containerOffset = region.containerOffset;
     let width, top, height, left;
+    // 放大倍数
+    const m = this.containerOffset.width / containerOffset.width;
+    // console.log("this.currentAbsoluteMousePoint.x ", this.currentAbsoluteMousePoint.x);
+    // console.log("e.clientX", e.clientX);
     // 8个方向
+    const offsetX = (this.currentAbsoluteMousePoint.x - e.clientX) / m;
+    const offsetY = (this.currentAbsoluteMousePoint.y - e.clientY) / m;
     switch (this.stretchDirect) {
       case "e":
-        width = e.clientX - this.currentMousePoint.x + this.initialRegion.width - this.containerOffset.left;
+        width = this.initialRegion.width - offsetX > 5 ? this.initialRegion.width - offsetX : 5;
         break;
       case "n":
-        const noffsetHeight = this.initialRegion.height  + this.currentMousePoint.y + this.containerOffset.top - e.clientY;
-        top = noffsetHeight > 5 ? e.clientY - this.containerOffset.top : this.initialRegion.top + this.initialRegion.height - 5;
-        height = noffsetHeight > 5 ? noffsetHeight : 5;
+        height = this.initialRegion.height + offsetY > 5 ? this.initialRegion.height + offsetY : 5;
+        if (height !== 5) {
+          top = this.initialRegion.top - offsetY;
+        }
         break;
       case "s":
-        height = e.clientY  - this.currentMousePoint.y + this.initialRegion.height - this.containerOffset.top;
+        height = this.initialRegion.height - offsetY > 5 ? this.initialRegion.height - offsetY : 5;
         break;
       case "w":
-        const woffsetWidth = this.initialRegion.width  + this.currentMousePoint.x + this.containerOffset.left - e.clientX;
-        left = woffsetWidth > 5 ? e.clientX - this.containerOffset.left : this.initialRegion.left + this.initialRegion.width - 5 ;
-        width = woffsetWidth > 5 ? woffsetWidth : 5;
+        width = this.initialRegion.width + offsetX > 5 ? this.initialRegion.width + offsetX : 5;
+        if (width !== 5) {
+          left = this.initialRegion.left - offsetX
+        }
         break;
       case "ne":
-        const neoffsetHeight = this.initialRegion.height  + this.currentMousePoint.y + this.containerOffset.top - e.clientY;
-        top = neoffsetHeight > 5 ? e.clientY - this.containerOffset.top : this.initialRegion.top + this.initialRegion.height - 5;
-        height = neoffsetHeight > 5 ? neoffsetHeight : 5;
-        width = e.clientX - this.currentMousePoint.x + this.initialRegion.width - this.containerOffset.left;        
+        height = this.initialRegion.height + offsetY > 5 ? this.initialRegion.height + offsetY : 5;
+        if (height !== 5) {
+          top = this.initialRegion.top - offsetY;
+        }
+        width = this.initialRegion.width - offsetX > 5 ? this.initialRegion.width - offsetX : 5;     
         break;
       case "nw":
-        const nwoffsetWidth = this.initialRegion.width  + this.currentMousePoint.x + this.containerOffset.left - e.clientX;
-        left = nwoffsetWidth > 5 ? e.clientX - this.containerOffset.left : this.initialRegion.left + this.initialRegion.width - 5 ;
-        width = nwoffsetWidth > 5 ? nwoffsetWidth : 5;
-        const nwoffsetHeight = this.initialRegion.height  + this.currentMousePoint.y + this.containerOffset.top - e.clientY;
-        top = nwoffsetHeight > 5 ? e.clientY - this.containerOffset.top : this.initialRegion.top + this.initialRegion.height - 5;
-        height = nwoffsetHeight > 5 ? nwoffsetHeight : 5;
+        height = this.initialRegion.height + offsetY > 5 ? this.initialRegion.height + offsetY : 5;
+        if (height !== 5) {
+          top = this.initialRegion.top - offsetY;
+        }
+        width = this.initialRegion.width + offsetX > 5 ? this.initialRegion.width + offsetX : 5;
+        if (width !== 5) {
+          left = this.initialRegion.left - offsetX
+        }
         break;
       case "sw":
-        height = e.clientY  - this.currentMousePoint.y + this.initialRegion.height - this.containerOffset.top;
-        const swoffsetWidth = this.initialRegion.width  + this.currentMousePoint.x + this.containerOffset.left - e.clientX;
-        left = swoffsetWidth > 5 ? e.clientX - this.containerOffset.left : this.initialRegion.left + this.initialRegion.width - 5 ;
-        width = swoffsetWidth > 5 ? swoffsetWidth : 5;
+        height = this.initialRegion.height - offsetY > 5 ? this.initialRegion.height - offsetY : 5;
+        width = this.initialRegion.width + offsetX > 5 ? this.initialRegion.width + offsetX : 5;
+        if (width !== 5) {
+          left = this.initialRegion.left - offsetX
+        }
         break;
       case "se":
-        height = e.clientY  - this.currentMousePoint.y + this.initialRegion.height - this.containerOffset.top;
-        width = e.clientX - this.currentMousePoint.x + this.initialRegion.width - this.containerOffset.left;
+        height = this.initialRegion.height - offsetY > 5 ? this.initialRegion.height - offsetY : 5;
+        width = this.initialRegion.width - offsetX > 5 ? this.initialRegion.width - offsetX : 5;
         break;
       }
       region.width = width ? width  : region.width;
@@ -250,12 +317,15 @@ class DragRegion extends Component {
   draging = (index, e) => {
     const list = this.state.regionList;
     const region = list[index];
+    const containerOffset = region.containerOffset;
+    // 放大倍数
+    const m = this.containerOffset.width / containerOffset.width;
     const cx = e.clientX;     // 光标移动到的点
     const px = this.currentMousePoint.x; // 光标落点
     const cy = e.clientY;     // 光标移动到的点
     const py = this.currentMousePoint.y; // 光标落点
-    region.left = this.initialRegion.left + cx - px - this.containerOffset.left;
-    region.top = this.initialRegion.top + cy - py - this.containerOffset.top;
+    region.left = this.initialRegion.left + (cx - px - this.containerOffset.left)/ m;
+    region.top = this.initialRegion.top + (cy - py - this.containerOffset.top) / m;
     list[index] = region;
     this.setState({
       regionList: list
@@ -351,28 +421,71 @@ class DragRegion extends Component {
       this.setState({regionList: list})
     }
   }
-  _computerStyle(style) {
+  _computerEditBoxStyle(style) {
     const width = style ? style.width : ""
     const height = style ? style.height : ""
     const top = style ? style.top : ""
     const left = style ? style.left : ""
-    const containerStyle = {
-      position: "relative",
-      overflow: "hidden",
-      width, height, top, left
-    };
-    const imageStyle = {
+    return {
       position: "absolute", 
       width: width * this.state.enlargeCount, 
       height: height * this.state.enlargeCount, 
       top: top - (height / 2) * (this.state.enlargeCount - 1), 
       left: left - (width / 2) * (this.state.enlargeCount - 1), 
     };
-    return { containerStyle, imageStyle}
   }
+  _toLabelContainerStyle(style) {
+    const width = style ? style.width : ""
+    const height = style ? style.height : ""
+    const top = style ? style.top : ""
+    const left = style ? style.left : ""
+    return {
+      position: "relative",
+      overflow: "hidden",
+      width, height, top, left
+    };
+  }
+  _transformStyleMultiple(style, targetM) {
+    // 将initstyle放大targetM - currentM 倍
+    // 获取initStyle
+    const currentM = style.enlargeCount;
+    let width, height, top, left;
+    width = style.width / currentM * targetM;
+    height = style.height / currentM * targetM;
+    top = style.top - this.state.initialStyle.height / 2 * (targetM - currentM);
+    left = style.left - this.state.initialStyle.width / 2 * (targetM - currentM);
+    return {
+      width, height, top, left, 
+      // ,
+      display: "block",
+      position: "absolute",
+      userSelect: "none",
+      enlargeCount: targetM
+    }
+  }
+  _toLabelImageStyle(style) {
+    const imageStyle = this._toLabelContainerStyle(style);
+    delete imageStyle.overflow;
+    imageStyle.position = "absolute";
+    return imageStyle;
+  }
+
   render() {
     const img = this.props.image;
-    const { containerStyle, imageStyle} = this._computerStyle(this.state.initialStyle)
+    // let containerStyle, imageStyle;
+    const containerStyle = this._toLabelContainerStyle(this.state.initialStyle);
+    let imageStyle;
+    if (this.state.status === 1) {
+      // ?? 
+      if (this.state.enlargeCount > 1) {
+        imageStyle = this.state.mobileStatusStyle
+      } else {
+        imageStyle = this._toLabelImageStyle(this.state.initialStyle);
+      }
+    } else {
+      imageStyle = this.state.mobileStatusStyle || this._toLabelImageStyle(this.state.initialStyle);
+    }
+
     return (
       <div  className="drag-container" style={containerStyle}>
         <img ref="img" className="drag-container-image" style={imageStyle} src={img}>

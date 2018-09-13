@@ -39,6 +39,7 @@ class App extends Component {
       return;
     }
     this.setState({
+      status: 2,
       enlargeCount: value
     })
   }
@@ -64,7 +65,6 @@ class App extends Component {
         </div>
       )
     })
-    console.log(this.state.status);
     return (
       <div className="App">
       <div className="image-list">
@@ -74,15 +74,16 @@ class App extends Component {
         <div className="container">
           <div className="container-left">
             <div className="menu">
+              <a className="menu-butten" onClick={this.mobile} >{this.state.status === 1 ? "标注中" : "标注"}</a>
+              <a className="menu-butten" onClick={this.mobile} >{this.state.status === 2 ? "移动中" : "移动"}</a>
               <a className="menu-butten" onClick={this.adjust.bind(this, true)}>放大</a>
               <a className="menu-butten" onClick={this.adjust.bind(this, false)}>缩小</a>
-              <a className="menu-butten" onClick={this.mobile} >{this.state.status === 2 ? "正在移动" : "正在标注"}</a>
             </div>
             <div>
               <LabelRegion 
                 activeImage={this.state.activeImageIndex}
                 image={this.state.imageList[this.state.activeImageIndex]} 
-                label={this.state.activeLabel} 
+                activeLabel={this.state.activeLabel} 
                 style={{ width: 500, height: 350}} 
                 enlargeCount={this.state.enlargeCount}
                 status={this.state.status}

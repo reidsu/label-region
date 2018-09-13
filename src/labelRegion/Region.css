@@ -100,14 +100,12 @@
 }
 .region-footer {
   position: absolute;
-  /* top: 79%; */
-  /* left: 77%; */
   right: 3px;
   bottom: 3px;
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 16px;
   background: #1890ff;
 }
 .region-footer-image {
-  vertical-align: baseline;
+  vertical-align: top;
 }
