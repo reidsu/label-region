@@ -179,8 +179,19 @@ class DragRegion extends Component {
     const offsetWidth = e.clientX - this.currentMousePoint.x;
     const offsetHeight = e.clientY - this.currentMousePoint.y;
     let initialStyle = JSON.parse(JSON.stringify(this.state.mobileStatusStyle));
+  
     initialStyle.top = this.initialStyle.top + offsetHeight;
     initialStyle.left = this.initialStyle.left + offsetWidth;
+    // console.log("top", initialStyle.top);
+    if (initialStyle.top > this.state.initialStyle.top || initialStyle.left > this.state.initialStyle.left) {
+      return;
+    }
+    if (initialStyle.top + initialStyle.height < this.state.initialStyle.top + this.state.initialStyle.height) {
+      return;
+    }
+    if (initialStyle.left + initialStyle.width < this.state.initialStyle.left + this.state.initialStyle.width) {
+      return;
+    }
     this.setState({
       mobileStatusStyle: initialStyle
     })
@@ -448,12 +459,44 @@ class DragRegion extends Component {
   _transformStyleMultiple(style, targetM) {
     // 将initstyle放大targetM - currentM 倍
     // 获取initStyle
+    const maxTop = this.state.initialStyle.top;
+    const maxLeft = this.state.initialStyle.left;
+    const mixTop = this.state.initialStyle.top + this.state.initialStyle.height;
+    const mixLeft = this.state.initialStyle.left + this.state.initialStyle.width;
+    // console.log("mixTop", mixTop);
+    // console.log(maxLeft);
     const currentM = style.enlargeCount;
     let width, height, top, left;
     width = style.width / currentM * targetM;
     height = style.height / currentM * targetM;
     top = style.top - this.state.initialStyle.height / 2 * (targetM - currentM);
     left = style.left - this.state.initialStyle.width / 2 * (targetM - currentM);
+    if (top > maxTop ) {
+      top = maxTop;
+    }
+    if (top + height < mixTop) {
+
+    }
+    if (left > maxLeft) {
+      left = maxLeft;
+    }
+    if (left + width < mixLeft) {
+
+    }
+    // if (top + height < mixTop) {
+    //   top = mixTop;
+    //   console.log("top", top);
+
+    // }
+    // if (left > maxLeft) {
+    //   left = style.left;
+    // }
+    // top = top < maxTop ? style.top : top;
+    // left = left < maxLeft ? style.left : left;
+    // top = top + height < mixTop ? style.top : top;
+    // left = left + width < mixLeft ? style.left : left;
+
+    // console.log(top + height);
     return {
       width, height, top, left, 
       // ,
