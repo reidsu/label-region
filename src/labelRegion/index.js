@@ -19,6 +19,7 @@ class DragRegion extends Component {
       activeRegion: null,
       initialStyle: null,
       mobileStatusStyle: null,
+      showMiniImage: false,
       enlargeCount: 1,  // 0 - 4
     }
   }
@@ -31,7 +32,7 @@ class DragRegion extends Component {
   componentWillReceiveProps(nextProps) {
     let list = [];
     let activeRegion = this.state.activeRegion;
-    let status = nextProps.status;
+    let showMiniImage = false;
     // if (!nextProps.activeLabel && !nextProps.labelList && nextProps.enlargeCount === this.props.enlargeCount && nextProps.status === this.props.status) {
     //   return;
     // }
@@ -45,15 +46,20 @@ class DragRegion extends Component {
       list = list.concat(this._parsePositionToStyle(this.state.regionList || []));
     }
     if (this.state.activeRegion !== null && nextProps.activeLabel) {
-      if (this.props.activeImage === nextProps.activeImage) {
+      if (this.props.activeImage === nextProps.activeImage && list[this.state.activeRegion]) {
         list[this.state.activeRegion].label = nextProps.activeLabel;
       }
     }
     let enlargeCount = nextProps.enlargeCount || this.state.enlargeCount;
+    // 矫正最大值
     if (enlargeCount > 4) {
       enlargeCount = 4;
     } else if (enlargeCount < 1) {
       enlargeCount = 1;
+    }
+    if (enlargeCount > 1) {
+      // 展示缩略图
+      showMiniImage = true;
     }
     // 放大 缩小
     if (nextProps.enlargeCount !== this.state.enlargeCount) {
@@ -100,6 +106,7 @@ class DragRegion extends Component {
       regionList: list,   
       activeRegion,
       enlargeCount,
+      showMiniImage
     }); 
   }
   
@@ -158,6 +165,46 @@ class DragRegion extends Component {
     this.refs.container.removeEventListener("mousemove", this.closeDrag2);
     this.refs.container.removeEventListener("mousedown", this.dragImage);
     this.refs.container.removeEventListener("mouseup", this.closeDrag2);
+  }
+  registerMiniCardEvent = (miniCardDom) => {
+    if (!miniCardDom) {
+      return;
+    }
+    // 获取缩略
+    this.miniContanerOffset = miniCardDom.getBoundingClientRect();
+    // console.log(miniCardDom);
+    miniCardDom.addEventListener("mouseup", this.clickMiniCard);
+  }
+  clickMiniCard = (e) => {
+    e.stopImmediatePropagation();
+    // 禁止拖动
+    e.preventDefault();
+    const miniBox = {
+      width: 100,
+      height: 62.5,
+    }
+    const relativeX = e.clientX - this.miniContanerOffset.left;
+    const relativeY = e.clientY - this.miniContanerOffset.top;
+    const boxStyle = JSON.parse(JSON.stringify(this._generaterImageStyle(this.state.mobileStatusStyle)));
+    const miniRegion = this._generaterMiniRegion(boxStyle);
+    const currentWidth = miniRegion.width.substring(0, miniRegion.width.length - 1) * miniBox.width / 100;
+    const currentHeigth = miniRegion.height.substring(0, miniRegion.height.length - 1) * miniBox.height / 100;
+    // 小矩形的坐标  且判断最小值
+    let offsetX = relativeX - (currentWidth / 2) > 0 ? (relativeX - (currentWidth / 2)) / miniBox.width : 0;
+    let offsetY = relativeY - (currentHeigth / 2) > 0 ? (relativeY - (currentHeigth / 2)) / miniBox.height : 0;
+    if (miniBox.width * offsetX > miniBox.width - currentWidth) {
+      // 判断偏移最大值
+      offsetX = (miniBox.width - currentWidth ) / miniBox.width;
+    }
+    if (miniBox.height * offsetY > miniBox.height - currentHeigth) {
+      // 判断偏移最大值
+      offsetY = (miniBox.height - currentHeigth ) / miniBox.height;
+    }
+    boxStyle.left = this.state.initialStyle.left -(offsetX * this.state.mobileStatusStyle.width);
+    boxStyle.top = this.state.initialStyle.top -(offsetY * this.state.mobileStatusStyle.height);
+    this.setState({
+      mobileStatusStyle: boxStyle
+    })
   }
   dragImage = (e) => {
     if (this.state.enlargeCount === 1) {
@@ -263,8 +310,6 @@ class DragRegion extends Component {
     let width, top, height, left;
     // 放大倍数
     const m = this.containerOffset.width / containerOffset.width;
-    // console.log("this.currentAbsoluteMousePoint.x ", this.currentAbsoluteMousePoint.x);
-    // console.log("e.clientX", e.clientX);
     // 8个方向
     const offsetX = (this.currentAbsoluteMousePoint.x - e.clientX) / m;
     const offsetY = (this.currentAbsoluteMousePoint.y - e.clientY) / m;
@@ -461,45 +506,28 @@ class DragRegion extends Component {
     // 获取initStyle
     const maxTop = this.state.initialStyle.top;
     const maxLeft = this.state.initialStyle.left;
-    const mixTop = this.state.initialStyle.top + this.state.initialStyle.height;
-    const mixLeft = this.state.initialStyle.left + this.state.initialStyle.width;
-    // console.log("mixTop", mixTop);
-    // console.log(maxLeft);
     const currentM = style.enlargeCount;
     let width, height, top, left;
     width = style.width / currentM * targetM;
     height = style.height / currentM * targetM;
+    const minLeft = this.state.initialStyle.left + this.state.initialStyle.width - width;
+    const minTop = this.state.initialStyle.top + this.state.initialStyle.height - height;
     top = style.top - this.state.initialStyle.height / 2 * (targetM - currentM);
     left = style.left - this.state.initialStyle.width / 2 * (targetM - currentM);
     if (top > maxTop ) {
       top = maxTop;
     }
-    if (top + height < mixTop) {
-
+    if (top < minTop) {
+      top = minTop;
+    }
+    if (left < minLeft) {
+      left = minLeft;
     }
     if (left > maxLeft) {
       left = maxLeft;
     }
-    if (left + width < mixLeft) {
-
-    }
-    // if (top + height < mixTop) {
-    //   top = mixTop;
-    //   console.log("top", top);
-
-    // }
-    // if (left > maxLeft) {
-    //   left = style.left;
-    // }
-    // top = top < maxTop ? style.top : top;
-    // left = left < maxLeft ? style.left : left;
-    // top = top + height < mixTop ? style.top : top;
-    // left = left + width < mixLeft ? style.left : left;
-
-    // console.log(top + height);
     return {
       width, height, top, left, 
-      // ,
       display: "block",
       position: "absolute",
       userSelect: "none",
@@ -512,14 +540,20 @@ class DragRegion extends Component {
     imageStyle.position = "absolute";
     return imageStyle;
   }
-
-  render() {
-    const img = this.props.image;
-    // let containerStyle, imageStyle;
-    const containerStyle = this._toLabelContainerStyle(this.state.initialStyle);
+  _generaterMiniRegion(style) {
+    if (!this.state.showMiniImage) {
+      return {};
+    }
+    const miniStyle = {};
+    miniStyle.width = 100 / style.enlargeCount + "%";
+    miniStyle.height = 100 / style.enlargeCount + "%";
+    miniStyle.left = (this.state.initialStyle.left - style.left) * 100 / style.width + "%";
+    miniStyle.top = (this.state.initialStyle.top - style.top) * 100 / style.height + "%";
+    return miniStyle
+  }
+  _generaterImageStyle = () => {
     let imageStyle;
     if (this.state.status === 1) {
-      // ?? 
       if (this.state.enlargeCount > 1) {
         imageStyle = this.state.mobileStatusStyle
       } else {
@@ -528,7 +562,13 @@ class DragRegion extends Component {
     } else {
       imageStyle = this.state.mobileStatusStyle || this._toLabelImageStyle(this.state.initialStyle);
     }
-
+    return imageStyle;
+  }
+  render() {
+    const img = this.props.image;
+    const containerStyle = this._toLabelContainerStyle(this.state.initialStyle);
+    const imageStyle = this._generaterImageStyle();
+    const miniImageRegion = this._generaterMiniRegion(imageStyle);
     return (
       <div  className="drag-container" style={containerStyle}>
         <img ref="img" className="drag-container-image" style={imageStyle} src={img}>
@@ -548,7 +588,13 @@ class DragRegion extends Component {
             />);
           })}
         </div>
-     
+        {this.state.showMiniImage ? (<div 
+           className="mini-card"
+            ref={this.registerMiniCardEvent}
+          >
+          <img className="mini-image" src={img}/>
+          <div className="mini-image-region"  style={miniImageRegion}/>
+        </div>): ""}
       </div >
     )
   }

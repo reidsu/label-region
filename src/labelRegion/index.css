@@ -7,11 +7,34 @@
   
 }
 .drag-container-image {
-    display: block;
-    position: absolute;
-    user-select: none;
-    width: 700px;
-    height: 438.2px;
-    top: 10.9px;
-    left: 0px;
+  display: block;
+  position: absolute;
+  user-select: none;
+  width: 700px;
+  height: 438.2px;
+  top: 10.9px;
+  left: 0px;
+}
+
+.mini-card {
+  display: inline-block;
+  border: 1px solid #ffffff;
+  cursor: pointer;
+  border: 1px solid rgb(255, 255, 255);
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  user-select: none;
+  height: 62.5px;
+}
+.mini-image {
+  width: 100px;
+  height: 62.6px;
+  -webkit-user-drag: none;
+}
+.mini-image-region {
+  box-sizing: border-box;
+  position: absolute;
+  border: 1px solid rgb(153, 153, 153);
+
 }
