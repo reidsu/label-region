@@ -28,7 +28,7 @@ class DragRegion extends Component {
       this.props.onChangeRegion(this._stypeToPosition(this.state.regionList))
     }
   }
-  
+
   componentWillReceiveProps(nextProps) {
     let list = [];
     let activeRegion = this.state.activeRegion;
@@ -57,7 +57,7 @@ class DragRegion extends Component {
     } else if (enlargeCount < 1) {
       enlargeCount = 1;
     }
-    if (enlargeCount > 1) {
+    if (enlargeCount > 1 && nextProps.status === 2) {
       // 展示缩略图
       showMiniImage = true;
     }

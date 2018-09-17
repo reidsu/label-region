@@ -4,7 +4,8 @@
   "private": true,
   "dependencies": {
     "react": "^16.5.0",
-    "react-dom": "^16.5.0"
+    "react-dom": "^16.5.0",
+    "react-json-pretty": "^1.7.9"
   },
   "devDependencies": {
     "react-scripts": "1.1.5"

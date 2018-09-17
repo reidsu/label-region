@@ -6,7 +6,7 @@ import dog2 from "./images/dog2.jpg";
 import dog3 from "./images/dog3.jpg";
 import dog4 from "./images/dog4.jpg";
 import dog5 from "./images/dog5.jpg";
-
+import JSONPretty from 'react-json-pretty';
 import './App.css';
 
 class App extends Component {
@@ -26,6 +26,7 @@ class App extends Component {
     this.setState({
       activeImageIndex: i,
       enlargeCount: 1,
+      regionList: [],
     })
   }
   selectLabel = (i) => {
@@ -47,6 +48,13 @@ class App extends Component {
     this.setState({
       status: this.state.status === 1 ? 2 : 1,
     })
+  }
+  getRegionList = (list) => {
+    // this.setState({
+    //   regionList: list,
+    // })
+    this.regionList = list;
+    // console.log(this.regionList);
   }
   render() {
     const imageList = this.state.imageList.map((img, i) => {
@@ -87,6 +95,7 @@ class App extends Component {
                 style={{ width: 500, height: 350}} 
                 enlargeCount={this.state.enlargeCount}
                 status={this.state.status}
+                onChangeRegion={this.getRegionList}
               />
             </div>
           </div>
@@ -99,6 +108,9 @@ class App extends Component {
               </div>
             </div>
         </div>
+        {/* <div>
+         <JSONPretty id="json-pretty" json={this.regionList || []}></JSONPretty>
+        </div> */}
       </div>
 
     );
