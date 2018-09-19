@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import Region from "./Region";
 import "./index.css"
-
+// import { message } from "antd";
 // props: {
 //   regionList
 //   style: {width, height}
@@ -26,27 +26,43 @@ class DragRegion extends Component {
   componentDidUpdate() {
     if (this.props.onChangeRegion) {
       this.props.onChangeRegion(this._stypeToPosition(this.state.regionList))
-    }
+    } 
   }
 
   componentWillReceiveProps(nextProps) {
-    let list = [];
+    // console.log("nextProps.status", nextProps.status);
+    // console.log("nextProps.enlargeCount", nextProps.enlargeCount);
+    let isNeedSetState = false;
+    let list = this.state.regionList;
     let activeRegion = this.state.activeRegion;
-    let showMiniImage = false;
-    // if (!nextProps.activeLabel && !nextProps.labelList && nextProps.enlargeCount === this.props.enlargeCount && nextProps.status === this.props.status) {
-    //   return;
-    // }
-    // 获取已经绘画的矩形
-    if (this.state.regionList.length === 0) {
-      list = list.concat(this._parsePositionToStyle(nextProps.labelList || []));
-    } else if (this.props.activeImage !== nextProps.activeImage) {
-      activeRegion = null;
-      list = list.concat(this._parsePositionToStyle(nextProps.labelList || []));
-    } else {
-      list = list.concat(this._parsePositionToStyle(this.state.regionList || []));
+    if (nextProps.status === 3) {
+      if (this.state.activeRegion) {
+        this.setState({
+          activeRegion: null
+        })
+      }
+     
+      this.clearStatusLabelEvent();
+      this.clearStatusEditEvent(); 
+      return;
     }
+  
+    if (this.props.activeImage !== nextProps.activeImage) {
+      isNeedSetState = true;
+      activeRegion = null;
+      list = this._updateReionList(nextProps.regionList || [], []);
+    } else {
+      if (!this._compareRegion(nextProps.regionList || [], this.props.regionList || [])) {
+        // regionList发生变化
+        // 更新state的regionlist
+        isNeedSetState = true;
+        list = this._updateReionList(nextProps.regionList || [], this.state.regionList || []); 
+      }
+    }
+    
     if (this.state.activeRegion !== null && nextProps.activeLabel) {
       if (this.props.activeImage === nextProps.activeImage && list[this.state.activeRegion]) {
+        isNeedSetState = true;
         list[this.state.activeRegion].label = nextProps.activeLabel;
       }
     }
@@ -59,13 +75,18 @@ class DragRegion extends Component {
     }
     if (enlargeCount > 1 && nextProps.status === 2) {
       // 展示缩略图
-      showMiniImage = true;
-    }
+      this.setState({
+        showMiniImage: true
+      })
+      
+    } 
     // 放大 缩小
     if (nextProps.enlargeCount !== this.state.enlargeCount) {
+      isNeedSetState = true;
       if (enlargeCount === 1) {
         // 清理移动状态的style;
         this.setState({
+          showMiniImage: false,
           mobileStatusStyle: this._transformStyleMultiple(this.state.initialStyle, enlargeCount),
         })
       } else {
@@ -80,11 +101,16 @@ class DragRegion extends Component {
     }
     // console.log("切换", enlargeCount );
     if (nextProps.status !== this.props.status) {
+     
+      isNeedSetState = true;
       // 切换状态
       // console.log("切换状态");
       activeRegion = null;
       if (nextProps.status == 1) {
         // 标注状态
+        this.setState({
+          showMiniImage: false
+        })
         if (nextProps.enlargeCount === 1) {
           // 清理container移动状态的style
           this.setState({
@@ -100,18 +126,19 @@ class DragRegion extends Component {
         this.registerStatusEditEvent();
       }
     }
-    
-    this.setState({
-      status: nextProps.status,
-      regionList: list,   
-      activeRegion,
-      enlargeCount,
-      showMiniImage
-    }); 
+    if (isNeedSetState) {
+      this.setState({
+        status: nextProps.status,
+        regionList: list,   
+        activeRegion,
+        enlargeCount,
+        // showMiniImage
+      }); 
+    }
+  
   }
   
   componentDidMount() {
-    const list = this._parsePositionToStyle(this.props.labelList || []);
     const style = this.props.style || {};
     style.width = style.width || 500;
     style.height = style.height || 350;
@@ -119,6 +146,8 @@ class DragRegion extends Component {
     style.left = 0;
     style.position = "absolute";
     style.enlargeCount = 1;
+    this.style = style;
+    const list = this._parsePositionToStyle(this.props.regionList || [], this.style);
     const enlargeCount = this.props.enlargeCount || 1;
     const initialStyle = style;
     this.setState({
@@ -126,6 +155,7 @@ class DragRegion extends Component {
       initialStyle: initialStyle,
       enlargeCount,
       status: this.props.status,
+      regionMixSize: this.props.regionMixSize || 20,
     });
     this.registerStatusLabelEvent();
   }
@@ -198,7 +228,7 @@ class DragRegion extends Component {
     }
     if (miniBox.height * offsetY > miniBox.height - currentHeigth) {
       // 判断偏移最大值
-      offsetY = (miniBox.height - currentHeigth ) / miniBox.height;
+      offsetY = (miniBox.height - currentHeigth + 3) / miniBox.height;
     }
     boxStyle.left = this.state.initialStyle.left -(offsetX * this.state.mobileStatusStyle.width);
     boxStyle.top = this.state.initialStyle.top -(offsetY * this.state.mobileStatusStyle.height);
@@ -213,7 +243,8 @@ class DragRegion extends Component {
     e.stopImmediatePropagation();
     // 禁止拖动
     e.preventDefault();
-    this.containerOffset = this.refs.container.getBoundingClientRect();
+    this.containerOffset = this._getBoxStyle(this.refs.container);
+    // this.containerOffset = this.refs.container.getBoundingClientRect();
     this.currentMousePoint = {
       x: e.clientX,
       y: e.clientY,
@@ -248,7 +279,8 @@ class DragRegion extends Component {
     e.stopImmediatePropagation();
     // 禁止拖动
     e.preventDefault();
-    this.containerOffset = this.refs.container.getBoundingClientRect();
+    this.containerOffset = this._getBoxStyle(this.refs.container);
+    // this.containerOffset = this.refs.container.getBoundingClientRect();
     // 记录当前鼠标落点
     this.currentMousePoint = {
       x: e.clientX - this.containerOffset.left,
@@ -274,10 +306,13 @@ class DragRegion extends Component {
   createRegion(e) {
     const x = e.clientX;
     const y = e.clientY;
+    const containerOffset = JSON.parse(JSON.stringify(this.containerOffset));
+    const left =  x - this.containerOffset.left;
+    const top =  y - this.containerOffset.top;
     const currentRegion = {
-      left: x - this.containerOffset.left,
-      top: y - this.containerOffset.top,
-      containerOffset: this.containerOffset
+      l:  new Number(left / (containerOffset.width / 100)).toFixed(3),
+      t:  new Number(top / (containerOffset.height / 100)).toFixed(3),
+      containerOffset,
     }
     const list = this.state.regionList;
     const index = list.length;
@@ -306,65 +341,81 @@ class DragRegion extends Component {
     const list = this.state.regionList;
     const activeRegionIndex = this.state.activeRegion;
     const region = list[activeRegionIndex];
-    const containerOffset = region.containerOffset;
-    let width, top, height, left;
-    // 放大倍数
-    const m = this.containerOffset.width / containerOffset.width;
-    // 8个方向
-    const offsetX = (this.currentAbsoluteMousePoint.x - e.clientX) / m;
-    const offsetY = (this.currentAbsoluteMousePoint.y - e.clientY) / m;
+    let  w, t, h, l;
+    const minWidth = Number(this.state.regionMixSize / this.state.initialStyle.width) * 100;
+    const minHeigth = Number(this.state.regionMixSize / this.state.initialStyle.height) * 100;
+    const offsetXPercen = Number((this.currentAbsoluteMousePoint.x - e.clientX) * 100 / this.containerOffset.width);
+    const offsetYPercen = Number((this.currentAbsoluteMousePoint.y - e.clientY) * 100/ this.containerOffset.height);
     switch (this.stretchDirect) {
       case "e":
-        width = this.initialRegion.width - offsetX > 5 ? this.initialRegion.width - offsetX : 5;
+        const woffsetE = Number(this.initialRegion.w) - offsetXPercen;
+        w = woffsetE > minWidth ? woffsetE : minWidth
         break;
       case "n":
-        height = this.initialRegion.height + offsetY > 5 ? this.initialRegion.height + offsetY : 5;
-        if (height !== 5) {
-          top = this.initialRegion.top - offsetY;
+        const hoffsetN = Number(this.initialRegion.h) + offsetYPercen;
+        if (hoffsetN > minHeigth) {
+          h = Number(this.initialRegion.h) + offsetYPercen;
+          t = Number(this.initialRegion.t) - offsetYPercen;;
         }
         break;
       case "s":
-        height = this.initialRegion.height - offsetY > 5 ? this.initialRegion.height - offsetY : 5;
+        const hoffsetS = Number(this.initialRegion.h) - offsetYPercen;
+        if (hoffsetS > minHeigth) {
+          h = Number(this.initialRegion.h) - offsetYPercen;
+        }
         break;
       case "w":
-        width = this.initialRegion.width + offsetX > 5 ? this.initialRegion.width + offsetX : 5;
-        if (width !== 5) {
-          left = this.initialRegion.left - offsetX
+        const woffsetW = Number(this.initialRegion.w) + offsetXPercen;
+        if (woffsetW > minHeigth) {
+          w = woffsetW;
+          l = Number(this.initialRegion.l) - offsetXPercen
         }
         break;
       case "ne":
-        height = this.initialRegion.height + offsetY > 5 ? this.initialRegion.height + offsetY : 5;
-        if (height !== 5) {
-          top = this.initialRegion.top - offsetY;
+        const neoffsetE = Number(this.initialRegion.w) - offsetXPercen;
+        w = neoffsetE > minWidth ? neoffsetE : minWidth;
+        const neoffsetN = Number(this.initialRegion.h) + offsetYPercen;
+        if (neoffsetN > minHeigth) {
+          h = Number(this.initialRegion.h) + offsetYPercen;
+          t = Number(this.initialRegion.t) - offsetYPercen;;
         }
-        width = this.initialRegion.width - offsetX > 5 ? this.initialRegion.width - offsetX : 5;     
         break;
       case "nw":
-        height = this.initialRegion.height + offsetY > 5 ? this.initialRegion.height + offsetY : 5;
-        if (height !== 5) {
-          top = this.initialRegion.top - offsetY;
+        const nwoffsetW = Number(this.initialRegion.w) + offsetXPercen;
+        if (nwoffsetW > minHeigth) {
+          w = nwoffsetW;
+          l = Number(this.initialRegion.l) - offsetXPercen
         }
-        width = this.initialRegion.width + offsetX > 5 ? this.initialRegion.width + offsetX : 5;
-        if (width !== 5) {
-          left = this.initialRegion.left - offsetX
+       const nwoffsetN = Number(this.initialRegion.h) + offsetYPercen;
+        if (nwoffsetN > minHeigth) {
+          h = Number(this.initialRegion.h) + offsetYPercen;
+          t = Number(this.initialRegion.t) - offsetYPercen;;
         }
         break;
       case "sw":
-        height = this.initialRegion.height - offsetY > 5 ? this.initialRegion.height - offsetY : 5;
-        width = this.initialRegion.width + offsetX > 5 ? this.initialRegion.width + offsetX : 5;
-        if (width !== 5) {
-          left = this.initialRegion.left - offsetX
+        const swoffsetS = Number(this.initialRegion.h) - offsetYPercen;
+          if (swoffsetS > minHeigth) {
+            h = Number(this.initialRegion.h) - offsetYPercen;
+          }
+        const swoffsetW = Number(this.initialRegion.w) + offsetXPercen;
+        if (swoffsetW > minHeigth) {
+          w = swoffsetW;
+          l = Number(this.initialRegion.l) - offsetXPercen
         }
         break;
       case "se":
-        height = this.initialRegion.height - offsetY > 5 ? this.initialRegion.height - offsetY : 5;
-        width = this.initialRegion.width - offsetX > 5 ? this.initialRegion.width - offsetX : 5;
+        const hoffsetSE = Number(this.initialRegion.h) - offsetYPercen;
+        if (hoffsetSE > minHeigth) {
+          h = Number(this.initialRegion.h) - offsetYPercen;
+        }
+        const woffsetSE = Number(this.initialRegion.w) - offsetXPercen;
+        w = woffsetSE > minWidth ? woffsetSE : minWidth
         break;
       }
-      region.width = width ? width  : region.width;
-      region.top = top ? top  : region.top;
-      region.height = height ? height  : region.height;
-      region.left = left ? left  : region.left;
+      region.w = w ? w  : region.w;
+      region.h = h ? h  : region.h;
+      region.t = t ? t  : region.t;
+      region.l = l ? l  : region.l;
       list[activeRegionIndex] = region;
       this.setState({
         regionList: list
@@ -373,15 +424,14 @@ class DragRegion extends Component {
   draging = (index, e) => {
     const list = this.state.regionList;
     const region = list[index];
-    const containerOffset = region.containerOffset;
-    // 放大倍数
-    const m = this.containerOffset.width / containerOffset.width;
     const cx = e.clientX;     // 光标移动到的点
     const px = this.currentMousePoint.x; // 光标落点
     const cy = e.clientY;     // 光标移动到的点
     const py = this.currentMousePoint.y; // 光标落点
-    region.left = this.initialRegion.left + (cx - px - this.containerOffset.left)/ m;
-    region.top = this.initialRegion.top + (cy - py - this.containerOffset.top) / m;
+    const offsetXPercen = (cx - px - this.containerOffset.left) * 100 / this.containerOffset.width;
+    const offsetYPercen = (cy - py - this.containerOffset.top) * 100 / this.containerOffset.height;
+    region.l = Number(this.initialRegion.l) + Number(offsetXPercen);
+    region.t = Number(this.initialRegion.t) + Number(offsetYPercen);
     list[index] = region;
     this.setState({
       regionList: list
@@ -392,16 +442,23 @@ class DragRegion extends Component {
     const list = this.state.regionList;
     const region = list[index];
     if (this.currentMousePoint.x <= e.clientX - this.containerOffset.left) {
-      region.width = e.clientX - this.containerOffset.left - this.currentMousePoint.x;
+      const offset = e.clientX - this.containerOffset.left - this.currentMousePoint.x
+      region.w = new Number(offset / (region.containerOffset.width / 100)).toFixed(3);
+      
     } else {
-      region.width = this.currentMousePoint.x + this.containerOffset.left - e.clientX;
-      region.left = e.clientX - this.containerOffset.left;
+      const offsetW = this.currentMousePoint.x + this.containerOffset.left - e.clientX;
+      const offsetL = e.clientX - this.containerOffset.left;
+      region.w = new Number(offsetW / (region.containerOffset.width / 100)).toFixed(3);
+      region.l = new Number(offsetL / (region.containerOffset.width / 100)).toFixed(3);
     }
     if (this.currentMousePoint.y <= e.clientY - this.containerOffset.top) {
-      region.height =  e.clientY - this.currentMousePoint.y - this.containerOffset.top;
+      const offsetH = e.clientY - this.currentMousePoint.y - this.containerOffset.top
+      region.h = new Number(offsetH / (region.containerOffset.height / 100)).toFixed(3);      
     } else {
-      region.top = e.clientY - this.containerOffset.top;
-      region.height = this.containerOffset.top + this.currentMousePoint.y - e.clientY ;
+      const offsetT = e.clientY - this.containerOffset.top;
+      const offsetH = this.containerOffset.top + this.currentMousePoint.y - e.clientY;
+      region.t =  new Number(offsetT / (region.containerOffset.height / 100)).toFixed(3);
+      region.h =  new Number(offsetH / (region.containerOffset.height / 100)).toFixed(3);
     }
     list[index] = region;
     this.setState({regionList: list});
@@ -417,28 +474,39 @@ class DragRegion extends Component {
       return region;
     })
   }
-  _parsePositionToStyle(position) {
+  _parsePositionToStyle(position, style) {
     return position.map((p) => {
       if (p.left && p.top) {
         return p;
       }
+      let containerOffset = p.containerOffset || {
+        width: style.width,
+        height: style.height
+      };
+
       return {
+        id: position.id,
         label: p.label,
-        left: p.x1,
-        width: p.x2 - p.x1,
-        top: p.y1,
-        height: p.y2 - p.y1
+        // left: p.x1,
+        // width: p.x2 - p.x1,
+        // top: p.y1,
+        // height: p.y2 - p.y1,
+        l: Number(p.x1 / containerOffset.width),
+        w: Number((p.x2 - p.x1) / containerOffset.width),
+        t: Number((p.y1) / containerOffset.height),
+        h: Number((p.y2 - p.y1) / containerOffset.height),
+        containerOffset
       }
     })
   }
   _stypeToPosition(styles) {
     return styles.map((style) => {
       return {
-        x1: style.left,
-        x2: style.left + style.width,
-        y1: style.top,
-        y2: style.top + style.height,
         label: style.label,
+        x1: Number(this.state.initialStyle.width * style.l / 100).toFixed(0),
+        x2: Number(this.state.initialStyle.width * style.l / 100 + this.state.initialStyle.width * style.w / 100).toFixed(0),
+        y1: Number(this.state.initialStyle.height * style.t / 100).toFixed(0),
+        y2: Number(this.state.initialStyle.height * style.t / 100 + this.state.initialStyle.height * style.h / 100).toFixed(0),
       }
     })
   }
@@ -464,17 +532,28 @@ class DragRegion extends Component {
     })
   }
   _clearNoQualifieRegion() {
-    const list = this.state.regionList.filter(region => {
-      if (!region.width || !region.height) {
-        return false
+    const list = JSON.parse(JSON.stringify(this.state.regionList));
+    const region = list[this.state.activeRegion];
+    if (region) {
+      const minWidth = Number(this.state.regionMixSize / this.state.initialStyle.width) * 100;
+      const minHeigth = Number(this.state.regionMixSize / this.state.initialStyle.height) * 100;
+      // console.log("minWidth", minWidth);
+      if (region.w < minWidth || region.h < minHeigth) {
+        region.w = region.w < minWidth ? minWidth : region.w;
+        region.h = region.h < minHeigth ? minHeigth : region.h;
+        this.setState({
+          regionList: list
+        })
+
       }
-      if (!region.label && (region.width < 3 || region.height < 3)) {
-        return false;
-      }
-      return true;
-    })
-    if (list.length != this.state.regionList.length) {
-      this.setState({regionList: list})
+      // if (!this._comparePercentage(region.w, minWidth) || !this._comparePercentage(region.h, minHeigth)) {
+      //   console.log("minWidth", minWidth);
+      //   region.w = !this._comparePercentage(region.w, minWidth) ? minWidth : region.w;
+      //   region.h = !this._comparePercentage(region.h, minHeigth) ? minHeigth : region.h;
+      //   this.setState({
+      //     regionList: list
+      //   })
+      // }
     }
   }
   _computerEditBoxStyle(style) {
@@ -531,7 +610,7 @@ class DragRegion extends Component {
       display: "block",
       position: "absolute",
       userSelect: "none",
-      enlargeCount: targetM
+      enlargeCount: targetM,
     }
   }
   _toLabelImageStyle(style) {
@@ -548,7 +627,7 @@ class DragRegion extends Component {
     miniStyle.width = 100 / style.enlargeCount + "%";
     miniStyle.height = 100 / style.enlargeCount + "%";
     miniStyle.left = (this.state.initialStyle.left - style.left) * 100 / style.width + "%";
-    miniStyle.top = (this.state.initialStyle.top - style.top) * 100 / style.height + "%";
+    miniStyle.top = (this.state.initialStyle.top - style.top ) * 100 / style.height + 3 + "%";
     return miniStyle
   }
   _generaterImageStyle = () => {
@@ -563,6 +642,75 @@ class DragRegion extends Component {
       imageStyle = this.state.mobileStatusStyle || this._toLabelImageStyle(this.state.initialStyle);
     }
     return imageStyle;
+  }
+  _compareRegion(lastList, nextList) {
+    if (lastList.length !== nextList.length) {
+      return false;
+    }
+    for (let i = 0; i < lastList.length; i++) {
+      if (lastList[i].id !== nextList[i].id) {
+        return false;
+      }
+      if (lastList[i].x1 !== nextList[i].x1 
+        || lastList[i].x2 !== nextList[i].x2
+        || lastList[i].y1 !== nextList[i].y1
+        || lastList[i].y2 !== nextList[i].y2
+        ) {
+          return false;
+      }
+      if (!lastList[i].label && nextList[i].label) {
+        return false;
+      }
+      if (lastList[i].label && !nextList[i].label) {
+        return false;
+      }
+      if (lastList[i].label && nextList[i].label) {
+        if (lastList[i].label.id !== nextList[i].label.id
+          || lastList[i].label.name !== nextList[i].label.name
+          ) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+  _getBoxStyle = (box) => {
+    const p = box.getBoundingClientRect();
+    return {
+      width: p.width,
+      height: p.height,
+      top: p.top,
+      left: p.left
+    }
+  }
+  _updateReionList(propsList, stateList) {
+    const list = this._parsePositionToStyle(propsList, this.style).concat([]);
+    for (const region of stateList) {
+      const stateRegion = list.find((r) => {
+        if (r.id === region.id) {
+          return true;
+        }
+        return r.w == region.w && r.h == region.h && r.t == region.t && r.l == region.l;
+      });
+      if (!stateRegion) {
+        list.push(region);
+      }
+    }
+    return list;
+  }
+  _computePercentage(n, m, symbol) {
+    const numN = n.substring(0, n.length - 1);
+    const numM = m.substring(0, m.length - 1);
+    const r = !symbol ? Number(numN)+ Number(numM) : Number(numN) - Number(numM);
+    return Number(r).toFixed(3) +"%";
+  }
+  _toPercentage(n) {
+    return Number(n).toFixed(3) * 100 + "%"
+  }
+  _comparePercentage(n, m) {
+    const numN = n.substring(0, n.length - 1);
+    const numM = m.substring(0, m.length - 1);
+    return Number(numN) > Number(numM);
   }
   render() {
     const img = this.props.image;

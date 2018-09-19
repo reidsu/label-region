@@ -6,7 +6,6 @@ import dog2 from "./images/dog2.jpg";
 import dog3 from "./images/dog3.jpg";
 import dog4 from "./images/dog4.jpg";
 import dog5 from "./images/dog5.jpg";
-import JSONPretty from 'react-json-pretty';
 import './App.css';
 
 class App extends Component {
@@ -53,6 +52,7 @@ class App extends Component {
     // this.setState({
     //   regionList: list,
     // })
+    console.log(list);
     this.regionList = list;
     // console.log(this.regionList);
   }
@@ -108,9 +108,6 @@ class App extends Component {
               </div>
             </div>
         </div>
-        {/* <div>
-         <JSONPretty id="json-pretty" json={this.regionList || []}></JSONPretty>
-        </div> */}
       </div>
 
     );

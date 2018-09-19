@@ -12,13 +12,11 @@ class Region extends Component {
   }
   
   _positonToStyle = (position) => {
-    const boxWidth = this.props.boxStyle.width;
-    const boxHeight = this.props.boxStyle.height;
     return {
-      width: new Number(position.width / (boxWidth / 100)).toFixed(3) + "%",
-      height: new Number(position.height / (boxHeight / 100)).toFixed(3) + "%",
-      left: new Number(position.left / (boxWidth / 100)).toFixed(3) + "%",
-      top: new Number(position.top / (boxHeight / 100)).toFixed(3) + "%",
+      width: position.w + "%",
+      height: position.h + "%",
+      left: position.l + "%",
+      top: position.t + "%",
     }
   }
   delLabel = () => {
@@ -29,7 +27,7 @@ class Region extends Component {
     if (this.props.active) {
       style.border = "1px solid #39f"
     }
-
+    // console.log(style);
     return (
         <div ref="area" className="region-box" data-index={this.props.index} style={style} >
           {this.props.active ? (<div>
