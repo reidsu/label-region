@@ -1,7 +1,6 @@
 import React, { Component } from 'react';
 import Region from "./Region";
 import "./index.css"
-// import { message } from "antd";
 // props: {
 //   regionList
 //   style: {width, height}
@@ -30,8 +29,6 @@ class DragRegion extends Component {
   }
 
   componentWillReceiveProps(nextProps) {
-    // console.log("nextProps.status", nextProps.status);
-    // console.log("nextProps.enlargeCount", nextProps.enlargeCount);
     let isNeedSetState = false;
     let list = this.state.regionList;
     let activeRegion = this.state.activeRegion;
@@ -487,14 +484,10 @@ class DragRegion extends Component {
       return {
         id: position.id,
         label: p.label,
-        // left: p.x1,
-        // width: p.x2 - p.x1,
-        // top: p.y1,
-        // height: p.y2 - p.y1,
-        l: Number(p.x1 / containerOffset.width),
-        w: Number((p.x2 - p.x1) / containerOffset.width),
-        t: Number((p.y1) / containerOffset.height),
-        h: Number((p.y2 - p.y1) / containerOffset.height),
+        l: Number(p.x1 / containerOffset.width) * 100,
+        w: Number((p.x2 - p.x1) / containerOffset.width)* 100,
+        t: Number((p.y1) / containerOffset.height)* 100,
+        h: Number((p.y2 - p.y1) / containerOffset.height)* 100,
         containerOffset
       }
     })
