@@ -15,6 +15,7 @@ function MyCustomStorage(opts) {
 MyCustomStorage.prototype._handleFile = function _handleFile(req, file, cb) {
   this.getDestination(req, file, function (err, path) {
     var form = new FormData();
+   console.log(req.body);
     for (const key in req.body) {
       form.append(key, req.body[key]);
     }
@@ -23,6 +24,7 @@ MyCustomStorage.prototype._handleFile = function _handleFile(req, file, cb) {
     form.submit("http://saas-trainningdata-test.oss-cn-hangzhou.aliyuncs.com", (err, resp) => {
       console.log("err", err);
       console.log("resp", resp.resume().statusCode);
+      console.log("info", resp.resume().text);
     })
     // console.log(req.body);
     // var wr = fs.createWriteStream(`./img/${file.originalname}`);
