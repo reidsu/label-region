@@ -1,6 +1,8 @@
 const express = require("express");
 const multer = require("multer");
 const fs = require("fs");
+var FormData = require('form-data');
+const request = require("request")
 const app = express();
 
 function getDestination(req, file, cb) {
@@ -11,26 +13,20 @@ function MyCustomStorage(opts) {
 }
 
 MyCustomStorage.prototype._handleFile = function _handleFile(req, file, cb) {
-  console.log(req.body);
   this.getDestination(req, file, function (err, path) {
-    var wr = fs.createWriteStream(`./img/${file.originalname}`);
-    file.stream.pipe(wr);
-    // cb(null, 123);
-    // console.log("asd");
-    // if (err) return cb(err)
-    // // console.log(file.stream);
-    // fdfs.upload(file.stream, {
-    //   size: 123
-    // }).then(function (fileId) {
-    //   // fileId 为 group + '/' + filename
-    //   cb(null, {
-    //     id: fileId~
-    //   })
-    //   // console.log(fileId);
-    // }).catch(function (err) {
-    //   console.error(err);
-    // });
-
+    var form = new FormData();
+    for (const key in req.body) {
+      form.append(key, req.body[key]);
+    }
+    form.append("file", file.stream);
+    // console.log(form);
+    form.submit("http://saas-trainningdata-test.oss-cn-hangzhou.aliyuncs.com", (err, resp) => {
+      console.log("err", err);
+      console.log("resp", resp.resume().statusCode);
+    })
+    // console.log(req.body);
+    // var wr = fs.createWriteStream(`./img/${file.originalname}`);
+    // file.stream.pipe(wr);
   })
 }
 const storage = new MyCustomStorage({});
